@@ -1,3 +1,4 @@
+var count = 0;
 var http = require('http');
 http.globalAgent.maxSockets = 500;
 
@@ -87,34 +88,32 @@ function vibration(){
   return vibrationPin.read();
 }
 
-function update() {
-  var temperatureValue = temperature(),
-      lightValue = lightSensor(),
-      soundValue = sound(),
-      vibrationValue = vibration(),
-      accelerometerValue = accelerometer();
+var socket = require('socket.io-client')('http://pebblecode-iot-hack.herokuapp.com');
 
-  request.post('http://pebblecode-iot-hack.herokuapp.com/data', {
-    body: JSON.stringify({
+socket.on('connect', function () {
+  function update() {
+    var temperatureValue = temperature(),
+        lightValue = lightSensor(),
+        soundValue = sound(),
+        vibrationValue = vibration(),
+        accelerometerValue = accelerometer();
+
+    console.log(++count, 'emitting new reading...');
+
+    socket.emit('reading', {
       temperature: temperatureValue,
       light: lightValue,
       sound: soundValue,
       vibration: vibrationValue,
       accelerometer: accelerometerValue
-    })
-  }, function (err, headers) {
-    if (err) {
-      return console.log(err);
-    }
+    });
+  }
 
-    // console.log(headers.statusCode);
-  });
-}
+  update();
 
-update();
-
-var INTERVAL = 500;
-var intervalId = setInterval(update, INTERVAL);
+  var INTERVAL = 50;
+  var intervalId = setInterval(update, INTERVAL);
+});
 
 process.on('SIGINT', function () {
   clearInterval(intervalId);
@@ -132,4 +131,8 @@ process.on('SIGINT', function () {
 
   console.log("Exiting...");
   process.exit(1);
+});
+
+process.on('SIGSEGV', function () {
+
 });
